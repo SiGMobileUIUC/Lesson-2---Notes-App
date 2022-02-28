@@ -102,7 +102,10 @@ class HomeState extends State<Home> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          Navigator.of(context)
+              .push(MaterialPageRoute(builder: (context) => const Note()));
+        },
         child: const Icon(
           Icons.edit,
           color: Colors.white,
