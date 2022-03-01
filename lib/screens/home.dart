@@ -1,7 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import 'package:notes_app/misc/colors.dart';
-import 'package:notes_app/screens/note.dart';
+import 'package:notes_app/models/note.dart';
+import 'package:notes_app/screens/notes.dart';
+import 'package:notes_app/services/database_service.dart';
+import 'package:notes_app/widgets/alert_box.dart';
 
 class Root extends StatelessWidget {
   const Root({Key? key}) : super(key: key);
@@ -25,8 +31,7 @@ class Home extends StatefulWidget {
 }
 
 class HomeState extends State<Home> {
-  String noteTitle = "My Note";
-  String note = "This is my note";
+  Future<List<Note>> future = DBService.db.getNotes();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,62 +54,115 @@ class HomeState extends State<Home> {
           ),
           SliverList(
             delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                return Card(
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10.0, vertical: 5.0),
-                    isThreeLine: true,
-                    title: Text(
-                      noteTitle,
-                      style: const TextStyle(fontSize: 25.0),
-                    ),
-                    subtitle: Container(
-                      padding: const EdgeInsets.all(5.0),
-                      child: Column(
-                        children: [
-                          Container(
-                            child: Text(
-                              note,
-                              style: const TextStyle(fontSize: 20.0),
-                            ),
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.only(bottom: 5.0),
+              (context, ind) {
+                return FutureBuilder(
+                  future: future,
+                  builder: (BuildContext context,
+                      AsyncSnapshot<List<Note>?> snapshot) {
+                    switch (snapshot.connectionState) {
+                      case ConnectionState.none:
+                      case ConnectionState.waiting:
+                      case ConnectionState.active:
+                        return const Center(
+                          child: SpinKitRing(
+                            color: AppColors.secondaryUofILightest,
                           ),
-                          Row(
-                            children: [
-                              Text(
-                                DateFormat.yMd().format(DateTime.now()),
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 15.0,
+                        );
+                      case ConnectionState.done:
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const AlertBox(
+                            child: Text(
+                              'You do not have any notes.',
+                              style: TextStyle(
+                                  color: Colors.white, fontSize: 20.0),
+                            ),
+                          );
+                        }
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: snapshot.data!.length,
+                          itemBuilder: (context, index) {
+                            return Card(
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10.0, vertical: 5.0),
+                                isThreeLine: true,
+                                title: Text(
+                                  snapshot.data![index].noteTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.fade,
+                                  style: const TextStyle(fontSize: 25.0),
                                 ),
-                              )
-                            ],
-                          )
-                        ],
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => const Note(
-                          title: "My Note",
-                          note: "This is my note",
-                        ),
-                      ));
-                    },
-                  ),
+                                subtitle: Container(
+                                  padding: const EdgeInsets.all(5.0),
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        child: Text(
+                                          snapshot.data![index].note,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.fade,
+                                          style:
+                                              const TextStyle(fontSize: 20.0),
+                                        ),
+                                        alignment: Alignment.centerLeft,
+                                        padding:
+                                            const EdgeInsets.only(bottom: 5.0),
+                                      ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            DateFormat.yMd()
+                                                .format(DateTime.now()),
+                                            style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 15.0,
+                                            ),
+                                          )
+                                        ],
+                                      )
+                                    ],
+                                  ),
+                                ),
+                                onTap: () async {
+                                  await Navigator.of(context)
+                                      .push(MaterialPageRoute(
+                                    builder: (context) => Notes(
+                                      note: snapshot.data![index],
+                                    ),
+                                  ));
+                                  setState(() {
+                                    future = DBService.db.getNotes();
+                                  });
+                                },
+                              ),
+                            );
+                          },
+                        );
+                    }
+                  },
                 );
               },
-              childCount: 15,
+              childCount: 1,
             ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context)
-              .push(MaterialPageRoute(builder: (context) => const Note()));
+        onPressed: () async {
+          Note newNote = await DBService.db.newNote("", "");
+          setState(() {});
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => Notes(
+                note: newNote,
+              ),
+            ),
+          );
+          setState(() {
+            future = DBService.db.getNotes();
+          });
         },
         child: const Icon(
           Icons.edit,
