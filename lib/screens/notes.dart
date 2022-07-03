@@ -21,10 +21,14 @@ class _NotesState extends State<Notes> {
   @override
   void initState() {
     super.initState();
-    if (widget.note.noteTitle.isNotEmpty) {
+    if (widget.note.noteTitle == "(No Title)") {
+      _titleController.text = "";
+    } else if (widget.note.noteTitle.isNotEmpty) {
       _titleController.text = widget.note.noteTitle;
     }
-    if (widget.note.note.isNotEmpty) {
+    if (widget.note.note == "(No Note)") {
+      _noteController.text = "";
+    } else if (widget.note.note.isNotEmpty) {
       _noteController.text = widget.note.note;
     }
     titleFocusNode.addListener(() async {
@@ -40,12 +44,20 @@ class _NotesState extends State<Notes> {
   }
 
   Future<void> updateNote() async {
-    widget.note.note = _noteController.text;
+    if (_noteController.text.isEmpty) {
+      widget.note.note = "(No Note)";
+    } else {
+      widget.note.note = _noteController.text;
+    }
     await DBService.db.editNote(widget.note);
   }
 
   Future<void> updateTitle() async {
-    widget.note.noteTitle = _titleController.text;
+    if (_titleController.text.isEmpty) {
+      widget.note.noteTitle = "(No Title)";
+    } else {
+      widget.note.noteTitle = _titleController.text;
+    }
     await DBService.db.editNote(widget.note);
   }
 
@@ -71,6 +83,7 @@ class _NotesState extends State<Notes> {
         title: TextField(
           focusNode: titleFocusNode,
           controller: _titleController,
+          cursorColor: AppColors.urbanaOrange,
           decoration: const InputDecoration(
             hintText: "Title",
             hintStyle: TextStyle(
